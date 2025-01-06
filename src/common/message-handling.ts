@@ -10,11 +10,12 @@ import {
 import { z } from 'zod';
 import { parseMessage } from './utils';
 import * as net from 'net';
-import { sendServerHelloMessage } from './message-sending';
+import { sendServerHelloMessage, fetchValidity } from './message-sending';
 
 type MessageHandling = (message: any, connectionDetails: ConnectionDetails, socket: net.Socket) => void;
 
 const handleClientHello: MessageHandling = (message: ClientHelloMessage, connectionDetails, socket) => {
+  console.log('Received client hello message.');
   connectionDetails.serverRandom = undefined;
   connectionDetails.premaster = undefined;
   connectionDetails.sessionKey = undefined;
@@ -22,11 +23,19 @@ const handleClientHello: MessageHandling = (message: ClientHelloMessage, connect
   sendServerHelloMessage(socket, connectionDetails);
 };
 
-const handleServerHello: MessageHandling = (message: ServerHelloMessage, connectionDetails) => {
+const handleServerHello: MessageHandling = async (message: ServerHelloMessage, connectionDetails) => {
   if (connectionDetails.clientRandom === undefined) {
-    console.error('Have not sent a client hello message yet.');
+    throw Error('Have not sent a client hello message yet.');
   }
+  console.log('Received server hello message.');
   connectionDetails.serverRandom = message.random;
+  connectionDetails.serverCertificate = message.certificate;
+  const isValid = await fetchValidity(message.certificate);
+  if (!isValid) {
+    throw Error('Server certificate is not valid.');
+  }
+  console.log('Server certificate is valid.');
+  // TODO: send premaster
 };
 
 const serverHandlers: Record<string, MessageHandling> = {

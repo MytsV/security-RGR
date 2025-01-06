@@ -1,15 +1,15 @@
 import * as net from 'net';
 import { CertificateLoader } from './loader';
 import crypto from 'crypto';
-import { RequestType, ValidationRequest } from './types';
+import {RequestType, ValidationRequest, ValidationResponse} from './types';
 
 export class CAServer {
-  private readonly caCert: string;
+  private readonly caCert: crypto.X509Certificate;
   private readonly port: number;
 
   constructor(port: number, caPath: string) {
     const certLoader = new CertificateLoader(caPath);
-    this.caCert = certLoader.loadCACertificate();
+    this.caCert = new crypto.X509Certificate(certLoader.loadCACertificate());
     this.port = port;
   }
 
@@ -27,24 +27,20 @@ export class CAServer {
 
         if (request.type === RequestType.Validation) {
           const isValid = this.validateCertificate(request.certificate);
-          console.log(isValid);
+          const response: ValidationResponse = {
+            type: RequestType.Validation,
+            isValid,
+          }
+          socket.write(JSON.stringify(response));
         }
       } catch (error) {}
     });
   }
 
-  public validateCertificate(cert: string): boolean {
+  public validateCertificate(certContents: string): boolean {
     try {
-      const certBuffer = Buffer.from(cert);
-      return crypto.verify(
-        'SHA256',
-        certBuffer,
-        {
-          key: this.caCert,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-        },
-        certBuffer,
-      );
+      const cert = new crypto.X509Certificate(certContents);
+      return cert.verify(this.caCert.publicKey);
     } catch (error) {
       return false;
     }

@@ -17,7 +17,7 @@ const ClientHelloMessageSchema = BaseMessageSchema.extend({
 const ServerHelloMessageSchema = BaseMessageSchema.extend({
   type: z.literal(MessageType.ServerHello),
   random: z.string(),
-  publicKey: z.string(),
+  certificate: z.string(),
 });
 
 export { BaseMessageSchema, ClientHelloMessageSchema, ServerHelloMessageSchema };
@@ -31,6 +31,8 @@ export { BaseMessage, ClientHelloMessage, ServerHelloMessage };
 export type ConnectionDetails = {
   clientRandom?: string;
   serverRandom?: string;
+  serverCertificate?: string;
+  serverKey?: string;
   premaster?: string;
   sessionKey?: string;
 };
