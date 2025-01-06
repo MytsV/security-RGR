@@ -1,22 +1,18 @@
 import * as net from 'net';
 import { handleClientMessage } from './message-handling';
-import { ClientHelloMessage, ConnectionDetails } from './types';
-import { stringifyMessage } from './utils';
-import { formClientHelloMessage } from './message-forming';
+import { ConnectionDetails } from './types';
+import { sendClientHelloMessage } from './message-sending';
 
 let connectionDetails: ConnectionDetails = {};
 
 const client = net.createConnection({ port: 8080 }, () => {
   console.log('Connected to the server.');
-
-  const helloMessage: ClientHelloMessage = formClientHelloMessage();
-  connectionDetails.clientRandom = helloMessage.random;
-  client.write(stringifyMessage(helloMessage));
+  sendClientHelloMessage(client, connectionDetails);
 });
 
 client.on('data', (data) => {
   try {
-    handleClientMessage(data.toString(), connectionDetails);
+    handleClientMessage(data.toString(), connectionDetails, client);
   } catch (error) {
     console.error('Error processing server message:', error);
   }

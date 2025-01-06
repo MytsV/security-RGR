@@ -9,19 +9,22 @@ import {
 } from './types';
 import { z } from 'zod';
 import { parseMessage } from './utils';
+import * as net from 'net';
+import { sendServerHelloMessage } from './message-sending';
 
-type MessageHandling = (message: any, connectionDetails: ConnectionDetails) => void;
+type MessageHandling = (message: any, connectionDetails: ConnectionDetails, socket: net.Socket) => void;
 
-const handleClientHello: MessageHandling = (message: ClientHelloMessage, connectionDetails) => {
+const handleClientHello: MessageHandling = (message: ClientHelloMessage, connectionDetails, socket) => {
   connectionDetails.serverRandom = undefined;
   connectionDetails.premaster = undefined;
   connectionDetails.sessionKey = undefined;
   connectionDetails.clientRandom = message.random;
+  sendServerHelloMessage(socket, connectionDetails);
 };
 
 const handleServerHello: MessageHandling = (message: ServerHelloMessage, connectionDetails) => {
   if (connectionDetails.clientRandom === undefined) {
-    console.error('Cannot handle server_hello message without client_random');
+    console.error('Have not sent a client hello message yet.');
   }
   connectionDetails.serverRandom = message.random;
 };
@@ -42,6 +45,7 @@ const messageSchemas: Record<string, z.Schema> = {
 const handleMessage = (
   rawMessage: string,
   connectionDetails: ConnectionDetails,
+  socket: net.Socket,
   handlers: Record<string, MessageHandling>,
 ) => {
   try {
@@ -57,16 +61,16 @@ const handleMessage = (
 
     const messageSchema = messageSchemas[baseMessage.type];
     const validatedMessage = messageSchema.parse(parsedMessage);
-    serverHandler(validatedMessage, connectionDetails);
+    serverHandler(validatedMessage, connectionDetails, socket);
   } catch (error) {
     console.error('Failed to handle message:', error);
   }
 };
 
-export const handleServerMessage = (rawMessage: string, connectionDetails: ConnectionDetails) => {
-  handleMessage(rawMessage, connectionDetails, serverHandlers);
+export const handleServerMessage = (rawMessage: string, connectionDetails: ConnectionDetails, socket: net.Socket) => {
+  handleMessage(rawMessage, connectionDetails, socket, serverHandlers);
 };
 
-export const handleClientMessage = (rawMessage: string, connectionDetails: ConnectionDetails) => {
-  handleMessage(rawMessage, connectionDetails, clientHandlers);
+export const handleClientMessage = (rawMessage: string, connectionDetails: ConnectionDetails, socket: net.Socket) => {
+  handleMessage(rawMessage, connectionDetails, socket, clientHandlers);
 };

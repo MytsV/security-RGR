@@ -7,7 +7,7 @@ const server = net.createServer((socket) => {
   const connectionDetails: ConnectionDetails = {};
 
   socket.on('data', (data) => {
-    handleServerMessage(data.toString(), connectionDetails);
+    handleServerMessage(data.toString(), connectionDetails, socket);
   });
 
   // Handle client disconnection
