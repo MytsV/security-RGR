@@ -2,6 +2,25 @@
   "name": "tls-implementation",
   "version": "1.0.0",
   "main": "index.js",
+  "scripts": {
+    "dev:server": "nodemon src/server.ts",
+    "dev:client": "nodemon src/client.ts",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
   "author": "Viktoriia Myts",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
 }
