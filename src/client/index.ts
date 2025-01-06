@@ -1,4 +1,4 @@
-import * as net from 'net';
+import net from 'net';
 import { sendClientHelloMessage } from '../common/message-sending';
 import { ConnectionDetails } from '../common/types';
 import { handleClientMessage } from '../common/message-handling';

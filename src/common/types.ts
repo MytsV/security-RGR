@@ -7,6 +7,7 @@ const BaseMessageSchema = z.object({
 export enum MessageType {
   ClientHello = 'client_hello',
   ServerHello = 'server_hello',
+  ClientPremaster = 'client_premaster',
 }
 
 const ClientHelloMessageSchema = BaseMessageSchema.extend({
@@ -20,13 +21,19 @@ const ServerHelloMessageSchema = BaseMessageSchema.extend({
   certificate: z.string(),
 });
 
-export { BaseMessageSchema, ClientHelloMessageSchema, ServerHelloMessageSchema };
+const ClientPremasterMessageSchema = BaseMessageSchema.extend({
+  type: z.literal(MessageType.ClientPremaster),
+  encryptedPremaster: z.string(),
+});
+
+export { BaseMessageSchema, ClientHelloMessageSchema, ServerHelloMessageSchema, ClientPremasterMessageSchema };
 
 type BaseMessage = z.infer<typeof BaseMessageSchema>;
 type ClientHelloMessage = z.infer<typeof ClientHelloMessageSchema>;
 type ServerHelloMessage = z.infer<typeof ServerHelloMessageSchema>;
+type ClientPremasterMessage = z.infer<typeof ClientPremasterMessageSchema>;
 
-export { BaseMessage, ClientHelloMessage, ServerHelloMessage };
+export { BaseMessage, ClientHelloMessage, ServerHelloMessage, ClientPremasterMessage };
 
 export type ConnectionDetails = {
   clientRandom?: string;

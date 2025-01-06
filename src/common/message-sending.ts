@@ -1,7 +1,14 @@
-import { ClientHelloMessage, ConnectionDetails, MessageType, ServerHelloMessage } from './types';
+import {
+  ClientHelloMessage,
+  ClientPremasterMessage,
+  ConnectionDetails,
+  MessageType,
+  ServerHelloMessage,
+} from './types';
 import { generateRandomNonce, stringifyMessage } from './utils';
-import * as net from 'net';
+import net from 'net';
 import fs from 'fs';
+import crypto from 'crypto';
 
 export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
   const message: ClientHelloMessage = {
@@ -63,4 +70,31 @@ const executeValidityRequest = (certificate: string, resolve: (value: boolean) =
 
 export const fetchValidity = (certificate: string): Promise<boolean> => {
   return new Promise((resolve) => executeValidityRequest(certificate, resolve));
+};
+
+export const sendPremaster = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  if (connectionDetails.serverCertificate === undefined) {
+    throw Error('Server certificate is not set.');
+  }
+
+  const randomBytes = crypto.randomBytes(48);
+  connectionDetails.premaster = randomBytes.toString('hex');
+
+  const cert = new crypto.X509Certificate(connectionDetails.serverCertificate);
+  const publicKey = cert.publicKey;
+
+  const encryptedPremaster = crypto.publicEncrypt(
+    {
+      key: publicKey,
+      padding: crypto.constants.RSA_PKCS1_PADDING,
+    },
+    randomBytes,
+  );
+
+  const premasterMessage: ClientPremasterMessage = {
+    type: MessageType.ClientPremaster,
+    encryptedPremaster: encryptedPremaster.toString('hex'),
+  };
+
+  socket.write(stringifyMessage(premasterMessage));
 };

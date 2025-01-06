@@ -6,11 +6,14 @@ import {
   ServerHelloMessage,
   ConnectionDetails,
   MessageType,
+  ClientPremasterMessageSchema,
+  ClientPremasterMessage,
 } from './types';
 import { z } from 'zod';
 import { parseMessage } from './utils';
-import * as net from 'net';
-import { sendServerHelloMessage, fetchValidity } from './message-sending';
+import net from 'net';
+import { sendServerHelloMessage, fetchValidity, sendPremaster } from './message-sending';
+import crypto from 'crypto';
 
 type MessageHandling = (message: any, connectionDetails: ConnectionDetails, socket: net.Socket) => void;
 
@@ -23,7 +26,7 @@ const handleClientHello: MessageHandling = (message: ClientHelloMessage, connect
   sendServerHelloMessage(socket, connectionDetails);
 };
 
-const handleServerHello: MessageHandling = async (message: ServerHelloMessage, connectionDetails) => {
+const handleServerHello: MessageHandling = async (message: ServerHelloMessage, connectionDetails, socket) => {
   if (connectionDetails.clientRandom === undefined) {
     throw Error('Have not sent a client hello message yet.');
   }
@@ -32,14 +35,33 @@ const handleServerHello: MessageHandling = async (message: ServerHelloMessage, c
   connectionDetails.serverCertificate = message.certificate;
   const isValid = await fetchValidity(message.certificate);
   if (!isValid) {
-    throw Error('Server certificate is not valid.');
+    throw Error('Server certificate is invalid.');
   }
   console.log('Server certificate is valid.');
-  // TODO: send premaster
+  sendPremaster(socket, connectionDetails);
+};
+
+const handleClientPremaster: MessageHandling = (message: ClientPremasterMessage, connectionDetails, socket) => {
+  if (connectionDetails.serverKey === undefined) {
+    throw Error('Server key is not set.');
+  }
+
+  connectionDetails.premaster = crypto
+    .privateDecrypt(
+      {
+        key: crypto.createPrivateKey(connectionDetails.serverKey),
+        padding: crypto.constants.RSA_PKCS1_PADDING,
+      },
+      Buffer.from(message.encryptedPremaster, 'hex'),
+    )
+    .toString('hex');
+
+  console.log(connectionDetails.premaster);
 };
 
 const serverHandlers: Record<string, MessageHandling> = {
   [MessageType.ClientHello]: handleClientHello,
+  [MessageType.ClientPremaster]: handleClientPremaster,
 };
 
 const clientHandlers: Record<string, MessageHandling> = {
@@ -49,6 +71,7 @@ const clientHandlers: Record<string, MessageHandling> = {
 const messageSchemas: Record<string, z.Schema> = {
   [MessageType.ClientHello]: ClientHelloMessageSchema,
   [MessageType.ServerHello]: ServerHelloMessageSchema,
+  [MessageType.ClientPremaster]: ClientPremasterMessageSchema,
 };
 
 const handleMessage = (
