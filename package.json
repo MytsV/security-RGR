@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev:server": "nodemon src/server.ts",
-    "dev:client": "nodemon src/client.ts",
+    "dev:server": "nodemon src/server/index.ts",
+    "dev:client": "nodemon src/client/index.ts",
+    "dev:ca": "nodemon src/ca/index.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "author": "Viktoriia Myts",

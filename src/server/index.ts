@@ -1,22 +1,19 @@
 import * as net from 'net';
-import { ConnectionDetails } from './types';
-import { handleServerMessage } from './message-handling';
+import { ConnectionDetails } from '../common/types';
+import { handleServerMessage } from '../common/message-handling';
 
-// Create a TCP server
-const server = net.createServer((socket) => {
+const index = net.createServer((socket) => {
   const connectionDetails: ConnectionDetails = {};
 
   socket.on('data', (data) => {
     handleServerMessage(data.toString(), connectionDetails, socket);
   });
 
-  // Handle client disconnection
   socket.on('end', () => {
     console.log('Client disconnected.');
   });
 });
 
-// Start the server on port 8080
-server.listen(8080, () => {
+index.listen(8080, () => {
   console.log('TCP server is running on port 8080.');
 });

@@ -1,5 +1,5 @@
 import { ClientHelloMessage, ConnectionDetails, MessageType, ServerHelloMessage } from './types';
-import { generateRandomNonce } from './utils';
+import { generateRandomNonce, stringifyMessage } from './utils';
 import * as net from 'net';
 
 export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
@@ -8,7 +8,7 @@ export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: Co
     random: generateRandomNonce(),
   };
   connectionDetails.clientRandom = message.random;
-  socket.write(JSON.stringify(message));
+  socket.write(stringifyMessage(message));
 };
 
 export const sendServerHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
@@ -18,5 +18,5 @@ export const sendServerHelloMessage = (socket: net.Socket, connectionDetails: Co
     publicKey: 'todo',
   };
   connectionDetails.serverRandom = message.random;
-  socket.write(JSON.stringify(message));
+  socket.write(stringifyMessage(message));
 };
