@@ -8,11 +8,18 @@ import {
   MessageType,
   ClientPremasterMessageSchema,
   ClientPremasterMessage,
+  ServerPremasterMessage,
+  ServerPremasterMessageSchema,
 } from './types';
 import { z } from 'zod';
 import { parseMessage } from './utils';
 import net from 'net';
-import { sendServerHelloMessage, fetchValidity, sendPremaster } from './message-sending';
+import {
+  sendServerHelloMessage,
+  fetchValidity,
+  sendPremaster,
+  sendServerPremasterConfirmation,
+} from './message-sending';
 import crypto from 'crypto';
 
 type MessageHandling = (message: any, connectionDetails: ConnectionDetails, socket: net.Socket) => void;
@@ -56,7 +63,11 @@ const handleClientPremaster: MessageHandling = (message: ClientPremasterMessage,
     )
     .toString('hex');
 
-  console.log(connectionDetails.premaster);
+  sendServerPremasterConfirmation(socket);
+};
+
+const handleServerPremaster: MessageHandling = (message: ServerPremasterMessage, connectionDetails, socket) => {
+  console.log('Received confirmation of server decrypting premaster.');
 };
 
 const serverHandlers: Record<string, MessageHandling> = {
@@ -66,12 +77,14 @@ const serverHandlers: Record<string, MessageHandling> = {
 
 const clientHandlers: Record<string, MessageHandling> = {
   [MessageType.ServerHello]: handleServerHello,
+  [MessageType.ServerPremaster]: handleServerPremaster,
 };
 
 const messageSchemas: Record<string, z.Schema> = {
   [MessageType.ClientHello]: ClientHelloMessageSchema,
   [MessageType.ServerHello]: ServerHelloMessageSchema,
   [MessageType.ClientPremaster]: ClientPremasterMessageSchema,
+  [MessageType.ServerPremaster]: ServerPremasterMessageSchema,
 };
 
 const handleMessage = (

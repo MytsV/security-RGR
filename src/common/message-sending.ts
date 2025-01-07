@@ -4,6 +4,7 @@ import {
   ConnectionDetails,
   MessageType,
   ServerHelloMessage,
+  ServerPremasterMessage,
 } from './types';
 import { generateRandomNonce, stringifyMessage } from './utils';
 import net from 'net';
@@ -97,4 +98,11 @@ export const sendPremaster = (socket: net.Socket, connectionDetails: ConnectionD
   };
 
   socket.write(stringifyMessage(premasterMessage));
+};
+
+export const sendServerPremasterConfirmation = (socket: net.Socket) => {
+  const message: ServerPremasterMessage = {
+    type: MessageType.ServerPremaster,
+  };
+  socket.write(stringifyMessage(message));
 };
