@@ -1,8 +1,25 @@
 import crypto, { randomBytes } from 'crypto';
 import { BaseMessage, ConnectionDetails, MessageType } from './types';
+import fs from "fs";
 
 export const generateRandomNonce = (): string => {
   return randomBytes(32).toString('hex');
+};
+
+export const loadServerCertificate = (): string => {
+  const serverCertPath = process.env.SERVER_CERT_PATH;
+  if (!serverCertPath) {
+    throw new Error('SERVER_CERT_PATH is not defined in the .env file');
+  }
+  return fs.readFileSync(serverCertPath, 'utf-8');
+};
+
+export const loadServerKey = (): string => {
+  const serverKeyPath = process.env.SERVER_KEY_PATH;
+  if (!serverKeyPath) {
+    throw new Error('SERVER_KEY_PATH is not defined in the .env file');
+  }
+  return fs.readFileSync(serverKeyPath, 'utf-8');
 };
 
 export const stringifyMessage = (message: BaseMessage): string => JSON.stringify(message);

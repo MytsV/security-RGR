@@ -1,8 +1,8 @@
 import net from 'net';
-import { sendClientHelloMessage } from '../common/message-sending';
-import { ConnectionDetails } from '../common/types';
+import {ClientDataMessage, ConnectionDetails, MessageType} from '../common/types';
 import { handleClientMessage } from '../common/message-handling';
 import dotenv from 'dotenv';
+import {stringifyMessage} from "../common/utils";
 
 dotenv.config();
 
@@ -15,7 +15,11 @@ let connectionDetails: ConnectionDetails = {};
 
 const client = net.createConnection({ port: parseInt(port) }, () => {
   console.log('Connected to the server.');
-  sendClientHelloMessage(client, connectionDetails);
+  const clientData: ClientDataMessage = {
+    type: MessageType.ClientData,
+    encryptedData: 'Hello!',
+  };
+  client.write(stringifyMessage(clientData));
 });
 
 client.on('data', (data) => {

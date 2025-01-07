@@ -7,8 +7,8 @@ export class CAServer {
   private readonly caCert: crypto.X509Certificate;
   private readonly port: number;
 
-  constructor(port: number, caPath: string) {
-    const certLoader = new CertificateLoader(caPath);
+  constructor(port: number, caCertPath: string) {
+    const certLoader = new CertificateLoader(caCertPath);
     this.caCert = new crypto.X509Certificate(certLoader.loadCACertificate());
     this.port = port;
   }

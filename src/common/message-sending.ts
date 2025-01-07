@@ -7,9 +7,14 @@ import {
   ServerHelloMessage,
   ServerPremasterMessage,
 } from './types';
-import {encryptMessage, generateRandomNonce, generateVerifyData, stringifyMessage} from './utils';
+import {
+  encryptMessage,
+  generateRandomNonce,
+  generateVerifyData,
+  loadServerCertificate, loadServerKey,
+  stringifyMessage
+} from './utils';
 import net from 'net';
-import fs from 'fs';
 import crypto from 'crypto';
 import readline from 'readline';
 
@@ -22,14 +27,6 @@ export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: Co
   connectionDetails.clientRandom = message.random;
   console.log(`Client random: ${message.random}`);
   socket.write(stringifyMessage(message));
-};
-
-const loadServerCertificate = (): string => {
-  return fs.readFileSync('./ca/certs/server.crt', 'utf-8');
-};
-
-const loadServerKey = (): string => {
-  return fs.readFileSync('./ca/private/server.key', 'utf-8');
 };
 
 export const sendServerHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
@@ -58,9 +55,12 @@ const executeValidityRequest = (certificate: string, resolve: (value: boolean) =
   });
   console.log('Validating the server certificate.');
 
-  const client = new net.Socket();
+  const port = process.env.CA_PORT;
+  if (!port) {
+    throw new Error('CA_PORT is not defined in the .env file');
+  }
 
-  client.connect(8081, '127.0.0.1', () => {
+  const client = net.createConnection({ port: parseInt(port) }, () => {
     client.write(request);
   });
 
