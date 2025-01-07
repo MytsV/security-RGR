@@ -1,24 +1,26 @@
 import {
-  ClientDataMessage,
+  ClientDataMessage, ClientFinishedMessage,
   ClientHelloMessage,
   ClientPremasterMessage,
   ConnectionDetails,
-  MessageType,
+  MessageType, ServerFinishedMessage,
   ServerHelloMessage,
   ServerPremasterMessage,
 } from './types';
-import { encryptMessage, generateRandomNonce, stringifyMessage } from './utils';
+import {encryptMessage, generateRandomNonce, generateVerifyData, stringifyMessage} from './utils';
 import net from 'net';
 import fs from 'fs';
 import crypto from 'crypto';
 import readline from 'readline';
 
 export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  console.log('Sending client hello message.');
   const message: ClientHelloMessage = {
     type: MessageType.ClientHello,
     random: generateRandomNonce(),
   };
   connectionDetails.clientRandom = message.random;
+  console.log(`Client random: ${message.random}`);
   socket.write(stringifyMessage(message));
 };
 
@@ -31,14 +33,21 @@ const loadServerKey = (): string => {
 };
 
 export const sendServerHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  console.log('Sending server hello message.');
+
   const message: ServerHelloMessage = {
     type: MessageType.ServerHello,
     random: generateRandomNonce(),
     certificate: loadServerCertificate(),
   };
+
+  console.log(`Server random: ${message.random}`);
+  console.log(`Server certificate: ${message.certificate}`);
+
   connectionDetails.serverRandom = message.random;
   connectionDetails.serverCertificate = message.certificate;
   connectionDetails.serverKey = loadServerKey();
+
   socket.write(stringifyMessage(message));
 };
 
@@ -47,6 +56,7 @@ const executeValidityRequest = (certificate: string, resolve: (value: boolean) =
     type: 'validation',
     certificate,
   });
+  console.log('Validating the server certificate.');
 
   const client = new net.Socket();
 
@@ -83,6 +93,8 @@ export const sendPremaster = (socket: net.Socket, connectionDetails: ConnectionD
   const randomBytes = crypto.randomBytes(48);
   connectionDetails.premaster = randomBytes.toString('hex');
 
+  console.log(`Generated premaster ${connectionDetails.premaster}`);
+
   const cert = new crypto.X509Certificate(connectionDetails.serverCertificate);
   const publicKey = cert.publicKey;
 
@@ -94,26 +106,50 @@ export const sendPremaster = (socket: net.Socket, connectionDetails: ConnectionD
     randomBytes,
   );
 
-  const premasterMessage: ClientPremasterMessage = {
+  const message: ClientPremasterMessage = {
     type: MessageType.ClientPremaster,
     encryptedPremaster: encryptedPremaster.toString('hex'),
   };
 
-  socket.write(stringifyMessage(premasterMessage));
+  console.log(`Sending encrypted premaster: ${message.encryptedPremaster}.`);
+
+  socket.write(stringifyMessage(message));
 };
 
 export const sendServerPremasterConfirmation = (socket: net.Socket) => {
   const message: ServerPremasterMessage = {
     type: MessageType.ServerPremaster,
   };
+  console.log('Sending confirmation of server decrypting premaster.');
   socket.write(stringifyMessage(message));
 };
+
+export const sendClientFinished = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  const message: ClientFinishedMessage = {
+    type: MessageType.ClientFinished,
+    verifyData: generateVerifyData(connectionDetails, true),
+  };
+  console.log(`Sending client finished message with verify data: ${message.verifyData}`);
+  socket.write(stringifyMessage(message));
+}
+
+export const sendServerFinished = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  const message: ServerFinishedMessage = {
+    type: MessageType.ServerFinished,
+    verifyData: generateVerifyData(connectionDetails, false),
+  };
+  console.log(`Sending server finished message with verify data: ${message.verifyData}`);
+  socket.write(stringifyMessage(message));
+}
 
 export const startClientInputTransfer = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
   const reader = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    prompt: 'Input the message: ',
   });
+
+  reader.prompt();
 
   reader.on('line', (input: string) => {
     const clientData: ClientDataMessage = {

@@ -34,7 +34,7 @@ import {
   fetchValidity,
   sendPremaster,
   sendServerPremasterConfirmation,
-  startClientInputTransfer,
+  startClientInputTransfer, sendClientFinished, sendServerFinished,
 } from './message-sending';
 import crypto from 'crypto';
 
@@ -42,6 +42,8 @@ type MessageHandling = (message: any, connectionDetails: ConnectionDetails, sock
 
 const handleClientHello: MessageHandling = (message: ClientHelloMessage, connectionDetails, socket) => {
   console.log('Received client hello message.');
+  console.log(`Client random: ${message.random}`);
+
   connectionDetails.serverRandom = undefined;
   connectionDetails.premaster = undefined;
   connectionDetails.sessionKey = undefined;
@@ -54,14 +56,18 @@ const handleServerHello: MessageHandling = async (message: ServerHelloMessage, c
     throw Error('Have not sent a client hello message yet.');
   }
   console.log('Received server hello message.');
+  console.log(`Server random: ${message.random}`);
+  console.log(`Server certificate: ${message.certificate}`);
 
   connectionDetails.serverRandom = message.random;
   connectionDetails.serverCertificate = message.certificate;
+
   const isValid = await fetchValidity(message.certificate);
   if (!isValid) {
     throw Error('Server certificate is invalid.');
   }
-  console.log('Server certificate is valid.');
+  console.log('Approved the certificate validity at certificate authority.');
+
   sendPremaster(socket, connectionDetails);
 };
 
@@ -69,6 +75,8 @@ const handleClientPremaster: MessageHandling = (message: ClientPremasterMessage,
   if (connectionDetails.serverKey === undefined) {
     throw Error('Server key is not set.');
   }
+
+  console.log(`Received encrypted premaster: ${message.encryptedPremaster}`);
 
   connectionDetails.premaster = crypto
     .privateDecrypt(
@@ -80,19 +88,15 @@ const handleClientPremaster: MessageHandling = (message: ClientPremasterMessage,
     )
     .toString('hex');
 
+  console.log(`Decrypted premaster: ${connectionDetails.premaster}`);
+
   sendServerPremasterConfirmation(socket);
 };
 
 const handleServerPremaster: MessageHandling = (message: ServerPremasterMessage, connectionDetails, socket) => {
   console.log('Received confirmation of server decrypting premaster.');
   connectionDetails.sessionKey = deriveSessionKey(connectionDetails);
-
-  const expectedVerifyData = generateVerifyData(connectionDetails, true);
-  const clientFinished: ClientFinishedMessage = {
-    type: MessageType.ClientFinished,
-    verifyData: expectedVerifyData,
-  };
-  socket.write(stringifyMessage(clientFinished));
+  sendClientFinished(socket, connectionDetails);
 };
 
 const handleServerFinished: MessageHandling = (
@@ -100,6 +104,7 @@ const handleServerFinished: MessageHandling = (
   connectionDetails: ConnectionDetails,
   socket: net.Socket,
 ) => {
+  console.log(`Received server finished message: ${message.verifyData}`);
   const expectedVerifyData = generateVerifyData(connectionDetails, false);
   if (message.verifyData !== expectedVerifyData) {
     throw new Error('Finished message verification failed.');
@@ -113,6 +118,7 @@ const handleClientFinished: MessageHandling = (
   connectionDetails: ConnectionDetails,
   socket: net.Socket,
 ) => {
+  console.log(`Received client finished message: ${message.verifyData}`);
   connectionDetails.sessionKey = deriveSessionKey(connectionDetails);
 
   const expectedVerifyData = generateVerifyData(connectionDetails, true);
@@ -120,17 +126,12 @@ const handleClientFinished: MessageHandling = (
     throw new Error('Client finished message verification failed.');
   }
   console.log('Client finished message is valid.');
-
-  const serverFinished: ServerFinishedMessage = {
-    type: MessageType.ServerFinished,
-    verifyData: generateVerifyData(connectionDetails, false),
-  };
-  socket.write(stringifyMessage(serverFinished));
+  sendServerFinished(socket, connectionDetails);
 };
 
 const handleServerData: MessageHandling = (message: ServerDataMessage, connectionDetails: ConnectionDetails) => {
   const decrypted = decryptMessage(message.encryptedData, connectionDetails.sessionKey!);
-  console.log('Server:', decrypted);
+  console.log('Received from server:', decrypted);
 };
 
 const handleClientData: MessageHandling = (
@@ -139,8 +140,9 @@ const handleClientData: MessageHandling = (
   socket: net.Socket,
 ) => {
   const decrypted = decryptMessage(message.encryptedData, connectionDetails.sessionKey!);
+  console.log('Received from client:', decrypted);
 
-  const response = `Accepted "${decrypted}"`;
+  const response = `Accepted ${decrypted}`;
 
   const serverData: ServerDataMessage = {
     type: MessageType.ServerData,
