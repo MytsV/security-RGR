@@ -1,8 +1,8 @@
 import net from 'net';
-import {ClientDataMessage, ConnectionDetails, MessageType} from '../common/types';
+import { ClientDataMessage, ConnectionDetails, MessageType } from '../common/types';
 import { handleClientMessage } from '../common/message-handling';
 import dotenv from 'dotenv';
-import {stringifyMessage} from "../common/utils";
+import { stringifyMessage } from '../common/utils';
 
 dotenv.config();
 

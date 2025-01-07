@@ -1,6 +1,6 @@
 import crypto, { randomBytes } from 'crypto';
 import { BaseMessage, ConnectionDetails, MessageType } from './types';
-import fs from "fs";
+import fs from 'fs';
 
 export const generateRandomNonce = (): string => {
   return randomBytes(32).toString('hex');
@@ -64,20 +64,28 @@ export const generateVerifyData = (connectionDetails: ConnectionDetails, isClien
 };
 
 export const encryptMessage = (data: string, sessionKey: string): string => {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(sessionKey, 'hex'), iv);
+  const nonce = crypto.randomBytes(12);
 
-  const encrypted = Buffer.concat([iv, cipher.update(Buffer.from(data)), cipher.final()]);
+  const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(sessionKey, 'hex'), nonce);
 
-  return encrypted.toString('hex');
+  const encrypted = Buffer.concat([cipher.update(Buffer.from(data)), cipher.final()]);
+
+  const authTag = cipher.getAuthTag();
+  const complete = Buffer.concat([nonce, authTag, encrypted]);
+
+  return complete.toString('hex');
 };
 
 export const decryptMessage = (encryptedHex: string, sessionKey: string): string => {
   const encrypted = Buffer.from(encryptedHex, 'hex');
-  const iv = encrypted.subarray(0, 16);
-  const data = encrypted.subarray(16);
 
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(sessionKey, 'hex'), iv);
+  const nonce = encrypted.subarray(0, 12);
+  const authTag = encrypted.subarray(12, 28);
+  const data = encrypted.subarray(28);
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(sessionKey, 'hex'), nonce);
+
+  decipher.setAuthTag(authTag);
 
   return Buffer.concat([decipher.update(data), decipher.final()]).toString();
 };

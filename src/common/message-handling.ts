@@ -34,7 +34,9 @@ import {
   fetchValidity,
   sendPremaster,
   sendServerPremasterConfirmation,
-  startClientInputTransfer, sendClientFinished, sendServerFinished,
+  startClientInputTransfer,
+  sendClientFinished,
+  sendServerFinished,
 } from './message-sending';
 import crypto from 'crypto';
 

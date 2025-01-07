@@ -1,9 +1,11 @@
 import {
-  ClientDataMessage, ClientFinishedMessage,
+  ClientDataMessage,
+  ClientFinishedMessage,
   ClientHelloMessage,
   ClientPremasterMessage,
   ConnectionDetails,
-  MessageType, ServerFinishedMessage,
+  MessageType,
+  ServerFinishedMessage,
   ServerHelloMessage,
   ServerPremasterMessage,
 } from './types';
@@ -11,8 +13,9 @@ import {
   encryptMessage,
   generateRandomNonce,
   generateVerifyData,
-  loadServerCertificate, loadServerKey,
-  stringifyMessage
+  loadServerCertificate,
+  loadServerKey,
+  stringifyMessage,
 } from './utils';
 import net from 'net';
 import crypto from 'crypto';
@@ -131,7 +134,7 @@ export const sendClientFinished = (socket: net.Socket, connectionDetails: Connec
   };
   console.log(`Sending client finished message with verify data: ${message.verifyData}`);
   socket.write(stringifyMessage(message));
-}
+};
 
 export const sendServerFinished = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
   const message: ServerFinishedMessage = {
@@ -140,7 +143,7 @@ export const sendServerFinished = (socket: net.Socket, connectionDetails: Connec
   };
   console.log(`Sending server finished message with verify data: ${message.verifyData}`);
   socket.write(stringifyMessage(message));
-}
+};
 
 export const startClientInputTransfer = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
   const reader = readline.createInterface({
