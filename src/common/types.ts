@@ -11,6 +11,8 @@ export enum MessageType {
   ServerPremaster = 'server_premaster',
   ClientFinished = 'client_finished',
   ServerFinished = 'server_finished',
+  ClientData = 'client_data',
+  ServerData = 'server_data',
 }
 
 const ClientHelloMessageSchema = BaseMessageSchema.extend({
@@ -43,6 +45,16 @@ const ServerFinishedMessageSchema = BaseMessageSchema.extend({
   verifyData: z.string(),
 });
 
+const ClientDataMessageSchema = BaseMessageSchema.extend({
+  type: z.literal(MessageType.ClientData),
+  encryptedData: z.string(),
+});
+
+const ServerDataMessageSchema = BaseMessageSchema.extend({
+  type: z.literal(MessageType.ServerData),
+  encryptedData: z.string(),
+});
+
 export {
   BaseMessageSchema,
   ClientHelloMessageSchema,
@@ -51,6 +63,8 @@ export {
   ServerPremasterMessageSchema,
   ClientFinishedMessageSchema,
   ServerFinishedMessageSchema,
+  ClientDataMessageSchema,
+  ServerDataMessageSchema,
 };
 
 type BaseMessage = z.infer<typeof BaseMessageSchema>;
@@ -60,6 +74,8 @@ type ClientPremasterMessage = z.infer<typeof ClientPremasterMessageSchema>;
 type ServerPremasterMessage = z.infer<typeof ServerPremasterMessageSchema>;
 type ClientFinishedMessage = z.infer<typeof ClientFinishedMessageSchema>;
 type ServerFinishedMessage = z.infer<typeof ServerFinishedMessageSchema>;
+type ClientDataMessage = z.infer<typeof ClientDataMessageSchema>;
+type ServerDataMessage = z.infer<typeof ServerDataMessageSchema>;
 
 export {
   BaseMessage,
@@ -69,6 +85,8 @@ export {
   ServerPremasterMessage,
   ClientFinishedMessage,
   ServerFinishedMessage,
+  ClientDataMessage,
+  ServerDataMessage,
 };
 
 export type ConnectionDetails = {

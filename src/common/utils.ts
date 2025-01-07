@@ -45,3 +45,22 @@ export const generateVerifyData = (connectionDetails: ConnectionDetails, isClien
   hmac.update(transcriptHash);
   return hmac.digest('hex');
 };
+
+export const encryptMessage = (data: string, sessionKey: string): string => {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(sessionKey, 'hex'), iv);
+
+  const encrypted = Buffer.concat([iv, cipher.update(Buffer.from(data)), cipher.final()]);
+
+  return encrypted.toString('hex');
+};
+
+export const decryptMessage = (encryptedHex: string, sessionKey: string): string => {
+  const encrypted = Buffer.from(encryptedHex, 'hex');
+  const iv = encrypted.subarray(0, 16);
+  const data = encrypted.subarray(16);
+
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(sessionKey, 'hex'), iv);
+
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString();
+};

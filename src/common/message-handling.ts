@@ -14,15 +14,27 @@ import {
   ClientFinishedMessage,
   ClientFinishedMessageSchema,
   ServerFinishedMessageSchema,
+  ServerDataMessage,
+  ClientDataMessage,
+  ServerDataMessageSchema,
+  ClientDataMessageSchema,
 } from './types';
 import { z } from 'zod';
-import { deriveSessionKey, generateVerifyData, parseMessage, stringifyMessage } from './utils';
+import {
+  decryptMessage,
+  deriveSessionKey,
+  encryptMessage,
+  generateVerifyData,
+  parseMessage,
+  stringifyMessage,
+} from './utils';
 import net from 'net';
 import {
   sendServerHelloMessage,
   fetchValidity,
   sendPremaster,
   sendServerPremasterConfirmation,
+  startClientInputTransfer,
 } from './message-sending';
 import crypto from 'crypto';
 
@@ -86,12 +98,14 @@ const handleServerPremaster: MessageHandling = (message: ServerPremasterMessage,
 const handleServerFinished: MessageHandling = (
   message: ServerFinishedMessage,
   connectionDetails: ConnectionDetails,
+  socket: net.Socket,
 ) => {
   const expectedVerifyData = generateVerifyData(connectionDetails, false);
   if (message.verifyData !== expectedVerifyData) {
     throw new Error('Finished message verification failed.');
   }
   console.log('Server finished message is valid.');
+  startClientInputTransfer(socket, connectionDetails);
 };
 
 const handleClientFinished: MessageHandling = (
@@ -114,16 +128,40 @@ const handleClientFinished: MessageHandling = (
   socket.write(stringifyMessage(serverFinished));
 };
 
+const handleServerData: MessageHandling = (message: ServerDataMessage, connectionDetails: ConnectionDetails) => {
+  const decrypted = decryptMessage(message.encryptedData, connectionDetails.sessionKey!);
+  console.log('Server:', decrypted);
+};
+
+const handleClientData: MessageHandling = (
+  message: ClientDataMessage,
+  connectionDetails: ConnectionDetails,
+  socket: net.Socket,
+) => {
+  const decrypted = decryptMessage(message.encryptedData, connectionDetails.sessionKey!);
+
+  const response = `Accepted "${decrypted}"`;
+
+  const serverData: ServerDataMessage = {
+    type: MessageType.ServerData,
+    encryptedData: encryptMessage(response, connectionDetails.sessionKey!),
+  };
+
+  socket.write(stringifyMessage(serverData));
+};
+
 const serverHandlers: Record<string, MessageHandling> = {
   [MessageType.ClientHello]: handleClientHello,
   [MessageType.ClientPremaster]: handleClientPremaster,
   [MessageType.ClientFinished]: handleClientFinished,
+  [MessageType.ClientData]: handleClientData,
 };
 
 const clientHandlers: Record<string, MessageHandling> = {
   [MessageType.ServerHello]: handleServerHello,
   [MessageType.ServerPremaster]: handleServerPremaster,
   [MessageType.ServerFinished]: handleServerFinished,
+  [MessageType.ServerData]: handleServerData,
 };
 
 const messageSchemas: Record<string, z.Schema> = {
@@ -133,6 +171,8 @@ const messageSchemas: Record<string, z.Schema> = {
   [MessageType.ServerPremaster]: ServerPremasterMessageSchema,
   [MessageType.ClientFinished]: ClientFinishedMessageSchema,
   [MessageType.ServerFinished]: ServerFinishedMessageSchema,
+  [MessageType.ClientData]: ClientDataMessageSchema,
+  [MessageType.ServerData]: ServerDataMessageSchema,
 };
 
 const handleMessage = (

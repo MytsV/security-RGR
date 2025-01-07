@@ -1,4 +1,5 @@
 import {
+  ClientDataMessage,
   ClientHelloMessage,
   ClientPremasterMessage,
   ConnectionDetails,
@@ -6,10 +7,11 @@ import {
   ServerHelloMessage,
   ServerPremasterMessage,
 } from './types';
-import { generateRandomNonce, stringifyMessage } from './utils';
+import { encryptMessage, generateRandomNonce, stringifyMessage } from './utils';
 import net from 'net';
 import fs from 'fs';
 import crypto from 'crypto';
+import readline from 'readline';
 
 export const sendClientHelloMessage = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
   const message: ClientHelloMessage = {
@@ -105,4 +107,19 @@ export const sendServerPremasterConfirmation = (socket: net.Socket) => {
     type: MessageType.ServerPremaster,
   };
   socket.write(stringifyMessage(message));
+};
+
+export const startClientInputTransfer = (socket: net.Socket, connectionDetails: ConnectionDetails) => {
+  const reader = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  reader.on('line', (input: string) => {
+    const clientData: ClientDataMessage = {
+      type: MessageType.ClientData,
+      encryptedData: encryptMessage(input, connectionDetails.sessionKey!),
+    };
+    socket.write(stringifyMessage(clientData));
+  });
 };
