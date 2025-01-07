@@ -16,7 +16,6 @@ index.on('data', (data) => {
   } catch (error) {
     console.error('Error processing server message:', error);
   }
-  console.log(connectionDetails);
 });
 
 index.on('end', () => {

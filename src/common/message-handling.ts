@@ -10,9 +10,13 @@ import {
   ClientPremasterMessage,
   ServerPremasterMessage,
   ServerPremasterMessageSchema,
+  ServerFinishedMessage,
+  ClientFinishedMessage,
+  ClientFinishedMessageSchema,
+  ServerFinishedMessageSchema,
 } from './types';
 import { z } from 'zod';
-import { parseMessage } from './utils';
+import { deriveSessionKey, generateVerifyData, parseMessage, stringifyMessage } from './utils';
 import net from 'net';
 import {
   sendServerHelloMessage,
@@ -38,6 +42,7 @@ const handleServerHello: MessageHandling = async (message: ServerHelloMessage, c
     throw Error('Have not sent a client hello message yet.');
   }
   console.log('Received server hello message.');
+
   connectionDetails.serverRandom = message.random;
   connectionDetails.serverCertificate = message.certificate;
   const isValid = await fetchValidity(message.certificate);
@@ -68,16 +73,57 @@ const handleClientPremaster: MessageHandling = (message: ClientPremasterMessage,
 
 const handleServerPremaster: MessageHandling = (message: ServerPremasterMessage, connectionDetails, socket) => {
   console.log('Received confirmation of server decrypting premaster.');
+  connectionDetails.sessionKey = deriveSessionKey(connectionDetails);
+
+  const expectedVerifyData = generateVerifyData(connectionDetails, true);
+  const clientFinished: ClientFinishedMessage = {
+    type: MessageType.ClientFinished,
+    verifyData: expectedVerifyData,
+  };
+  socket.write(stringifyMessage(clientFinished));
+};
+
+const handleServerFinished: MessageHandling = (
+  message: ServerFinishedMessage,
+  connectionDetails: ConnectionDetails,
+) => {
+  const expectedVerifyData = generateVerifyData(connectionDetails, false);
+  if (message.verifyData !== expectedVerifyData) {
+    throw new Error('Finished message verification failed.');
+  }
+  console.log('Server finished message is valid.');
+};
+
+const handleClientFinished: MessageHandling = (
+  message: ClientFinishedMessage,
+  connectionDetails: ConnectionDetails,
+  socket: net.Socket,
+) => {
+  connectionDetails.sessionKey = deriveSessionKey(connectionDetails);
+
+  const expectedVerifyData = generateVerifyData(connectionDetails, true);
+  if (message.verifyData !== expectedVerifyData) {
+    throw new Error('Client finished message verification failed.');
+  }
+  console.log('Client finished message is valid.');
+
+  const serverFinished: ServerFinishedMessage = {
+    type: MessageType.ServerFinished,
+    verifyData: generateVerifyData(connectionDetails, false),
+  };
+  socket.write(stringifyMessage(serverFinished));
 };
 
 const serverHandlers: Record<string, MessageHandling> = {
   [MessageType.ClientHello]: handleClientHello,
   [MessageType.ClientPremaster]: handleClientPremaster,
+  [MessageType.ClientFinished]: handleClientFinished,
 };
 
 const clientHandlers: Record<string, MessageHandling> = {
   [MessageType.ServerHello]: handleServerHello,
   [MessageType.ServerPremaster]: handleServerPremaster,
+  [MessageType.ServerFinished]: handleServerFinished,
 };
 
 const messageSchemas: Record<string, z.Schema> = {
@@ -85,6 +131,8 @@ const messageSchemas: Record<string, z.Schema> = {
   [MessageType.ServerHello]: ServerHelloMessageSchema,
   [MessageType.ClientPremaster]: ClientPremasterMessageSchema,
   [MessageType.ServerPremaster]: ServerPremasterMessageSchema,
+  [MessageType.ClientFinished]: ClientFinishedMessageSchema,
+  [MessageType.ServerFinished]: ServerFinishedMessageSchema,
 };
 
 const handleMessage = (

@@ -33,12 +33,24 @@ const ServerPremasterMessageSchema = BaseMessageSchema.extend({
   type: z.literal(MessageType.ServerPremaster),
 });
 
+const ClientFinishedMessageSchema = BaseMessageSchema.extend({
+  type: z.literal(MessageType.ClientFinished),
+  verifyData: z.string(),
+});
+
+const ServerFinishedMessageSchema = BaseMessageSchema.extend({
+  type: z.literal(MessageType.ServerFinished),
+  verifyData: z.string(),
+});
+
 export {
   BaseMessageSchema,
   ClientHelloMessageSchema,
   ServerHelloMessageSchema,
   ClientPremasterMessageSchema,
   ServerPremasterMessageSchema,
+  ClientFinishedMessageSchema,
+  ServerFinishedMessageSchema,
 };
 
 type BaseMessage = z.infer<typeof BaseMessageSchema>;
@@ -46,8 +58,18 @@ type ClientHelloMessage = z.infer<typeof ClientHelloMessageSchema>;
 type ServerHelloMessage = z.infer<typeof ServerHelloMessageSchema>;
 type ClientPremasterMessage = z.infer<typeof ClientPremasterMessageSchema>;
 type ServerPremasterMessage = z.infer<typeof ServerPremasterMessageSchema>;
+type ClientFinishedMessage = z.infer<typeof ClientFinishedMessageSchema>;
+type ServerFinishedMessage = z.infer<typeof ServerFinishedMessageSchema>;
 
-export { BaseMessage, ClientHelloMessage, ServerHelloMessage, ClientPremasterMessage, ServerPremasterMessage };
+export {
+  BaseMessage,
+  ClientHelloMessage,
+  ServerHelloMessage,
+  ClientPremasterMessage,
+  ServerPremasterMessage,
+  ClientFinishedMessage,
+  ServerFinishedMessage,
+};
 
 export type ConnectionDetails = {
   clientRandom?: string;
